@@ -30,7 +30,7 @@ from .install import install_postsim
 from .letters import LETTER_ACTION_DEFINITIONS, LETTER_ACTION_HANDLERS
 from .mailboxes import MAILBOX_ACTION_DEFINITIONS, MAILBOX_ACTION_HANDLERS
 
-PLUGIN_ID = "bunnyland_postsim"
+PLUGIN_ID = "bunnyland.postsim"
 
 
 def plugin() -> Plugin:
