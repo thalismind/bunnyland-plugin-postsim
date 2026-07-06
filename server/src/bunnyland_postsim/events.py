@@ -46,10 +46,38 @@ class MailCheckedEvent(DomainEvent):
     mail_ids: tuple[str, ...] = ()
 
 
+class GazettePublishedEvent(DomainEvent):
+    """The gossip-sheet press published a new edition from the world's news."""
+
+    gazette_id: str
+    edition: int
+    headline_count: int
+    scandal: bool = False
+
+
+class NoticePostedEvent(DomainEvent):
+    """A character pinned a notice to a bulletin board."""
+
+    notice_id: str
+    board_id: str
+    author_id: str
+
+
+class BoardReadEvent(DomainEvent):
+    """A character read a bulletin board (latest gossip-sheet edition + local notices)."""
+
+    board_id: str
+    edition: int = 0
+    notice_count: int = 0
+
+
 __all__ = [
+    "BoardReadEvent",
+    "GazettePublishedEvent",
     "LetterWrittenEvent",
     "MailCheckedEvent",
     "MailDeliveredEvent",
     "MailPostedEvent",
     "MailReturnedEvent",
+    "NoticePostedEvent",
 ]

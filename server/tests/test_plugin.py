@@ -4,12 +4,21 @@ from bunnyland.core.world_actor import WorldActor
 from bunnyland.plugins import apply_plugins, load_modules
 
 from bunnyland_postsim import (
+    BulletinBoardComponent,
+    BulletinNoticeComponent,
     CourierComponent,
+    GazetteComponent,
+    GossipSheetComponent,
     LetterComponent,
     MailboxComponent,
     MailInTransitComponent,
+    NewsdeskComponent,
     ParcelComponent,
+    PostedBy,
     PostWorldgenHook,
+    Reports,
+    bulletin_fragments,
+    install_gazette,
     install_postsim,
     postsim_fragments,
 )
@@ -29,15 +38,28 @@ def test_plugin_declares_its_contributions():
         MailInTransitComponent,
         MailboxComponent,
         CourierComponent,
+        GazetteComponent,
+        NewsdeskComponent,
+        GossipSheetComponent,
+        BulletinBoardComponent,
+        BulletinNoticeComponent,
     ):
         assert component in plugin.ecs.components
+    assert Reports in plugin.ecs.edges
+    assert PostedBy in plugin.ecs.edges
     assert PostWorldgenHook in plugin.content.worldgen_hooks
     assert postsim_fragments in plugin.content.prompt_fragments
+    assert bulletin_fragments in plugin.content.prompt_fragments
 
 
 def test_plugin_version():
     plugin = load_modules(["bunnyland_postsim"])[0]
-    assert plugin.version == "0.1.0"
+    assert plugin.version == "0.2.0"
+
+
+def test_plugin_recommends_wildsim_synergy():
+    plugin = load_modules(["bunnyland_postsim"])[0]
+    assert "bunnyland.wildsim" in plugin.dependencies.recommends
 
 
 def test_plugin_applies_and_registers_verbs():
@@ -45,9 +67,29 @@ def test_plugin_applies_and_registers_verbs():
     applied = apply_plugins(load_modules(["bunnyland_postsim"]), actor)
     assert applied[0].id == PLUGIN_ID
     command_types = {definition.command_type for definition in actor.action_definitions()}
-    assert {"write-letter", "send-parcel", "check-mail"} <= command_types
+    assert {
+        "write-letter",
+        "send-parcel",
+        "check-mail",
+        "post-notice",
+        "read-board",
+    } <= command_types
 
 
-def test_plugin_installs_courier_consequence():
+def test_plugin_installs_both_service_factories():
     plugin = load_modules(["bunnyland_postsim"])[0]
     assert install_postsim in plugin.runtime.service_factories
+    assert install_gazette in plugin.runtime.service_factories
+
+
+def test_plugin_typed_events_registered():
+    plugin = load_modules(["bunnyland_postsim"])[0]
+    names = {event.__name__ for event in plugin.commands.typed_events}
+    assert {"GazettePublishedEvent", "NoticePostedEvent", "BoardReadEvent"} <= names
+
+
+def test_apply_installs_gazette_press():
+    actor = WorldActor()
+    apply_plugins(load_modules(["bunnyland_postsim"]), actor)
+    presses = list(actor.world.query().with_all([GazetteComponent]).execute_entities())
+    assert len(presses) == 1

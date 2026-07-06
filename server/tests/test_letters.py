@@ -225,3 +225,84 @@ def test_send_parcel_rejects_when_addressee_has_no_room():
     )
     assert not result.ok
     assert result.reason == "the addressee is nowhere to be found"
+
+
+def test_send_parcel_rejects_invalid_character():
+    actor, _origin, _dest, _sender, _addressee, _box = _scenario()
+    result = SendParcelHandler().execute(
+        _ctx(actor), _cmd("???", "send-parcel", {"item_id": "entity_1"})
+    )
+    assert not result.ok
+    assert result.reason == "invalid character id"
+
+
+def test_send_parcel_rejects_invalid_item_id():
+    actor, _origin, _dest, sender, _addressee, _box = _scenario()
+    result = SendParcelHandler().execute(
+        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": "???"})
+    )
+    assert not result.ok
+    assert result.reason == "invalid item id"
+
+
+def test_send_parcel_rejects_addressee_present_but_roomless():
+    actor = WorldActor()
+    origin = _room(actor.world, "Post Office")
+    sender = _character(actor.world, origin, "Vin")
+    spawn_mailbox(actor.world, room_id=origin.id)
+    # The addressee exists but is not in any room, so there is nowhere to route to.
+    addressee = spawn_entity(
+        actor.world, [IdentityComponent(name="Kell", kind="character"), CharacterComponent()]
+    )
+    letter = _write(actor, sender, addressee)
+
+    result = SendParcelHandler().execute(
+        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)})
+    )
+    assert not result.ok
+    assert result.reason == "the addressee is nowhere to be found"
+
+
+def test_send_parcel_rejects_when_sender_not_in_a_room():
+    actor = WorldActor()
+    dest = _room(actor.world, "Cottage")
+    addressee = _character(actor.world, dest, "Kell")
+    # The sender holds the letter but stands in no room at all.
+    sender = spawn_entity(
+        actor.world, [IdentityComponent(name="Vin", kind="character"), CharacterComponent()]
+    )
+    letter = _write(actor, sender, addressee)
+
+    result = SendParcelHandler().execute(
+        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)})
+    )
+    assert not result.ok
+    assert result.reason == "you are not in a room"
+
+
+def test_send_parcel_rejects_missing_gift():
+    actor, _origin, _dest, sender, addressee, _box = _scenario()
+    letter = _write(actor, sender, addressee)
+    result = SendParcelHandler().execute(
+        _ctx(actor),
+        _cmd(sender.id, "send-parcel", {"item_id": str(letter.id), "gift_id": "entity_9999"}),
+    )
+    assert not result.ok
+    assert result.reason == "gift does not exist"
+
+
+def test_send_parcel_rejects_gift_not_held():
+    actor, origin, _dest, sender, addressee, _box = _scenario()
+    letter = _write(actor, sender, addressee)
+    gift = spawn_entity(
+        actor.world,
+        [IdentityComponent(name="cookies", kind="item"), PortableComponent(), HoldableComponent()],
+    )
+    origin.add_relationship(Contains(mode=ContainmentMode.ROOM_CONTENT), gift.id)  # on the floor
+
+    result = SendParcelHandler().execute(
+        _ctx(actor),
+        _cmd(sender.id, "send-parcel", {"item_id": str(letter.id), "gift_id": str(gift.id)}),
+    )
+    assert not result.ok
+    assert result.reason == "you are not holding that gift"

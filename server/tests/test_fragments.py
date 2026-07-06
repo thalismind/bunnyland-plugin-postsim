@@ -12,6 +12,15 @@ from bunnyland.core import (
 
 from bunnyland_postsim import postsim_fragments, spawn_letter, spawn_mailbox, spawn_parcel
 from bunnyland_postsim.components import MailInTransitComponent
+from bunnyland_postsim.fragments import bulletin_fragments
+from bunnyland_postsim.gazette_components import BulletinNoticeComponent, GossipSheetComponent
+from bunnyland_postsim.prefabs import spawn_bulletin_board
+
+
+def _loose_character(world, name="Nomad"):
+    return spawn_entity(
+        world, [IdentityComponent(name=name, kind="character"), CharacterComponent()]
+    )
 
 
 def _room(world, title="Hall"):
@@ -95,3 +104,46 @@ def test_no_mailbox_means_no_lines():
     room = _room(actor.world)
     reader = _character(actor.world, room, "Kell")
     assert postsim_fragments(actor.world, reader) == []
+
+
+def test_postsim_fragments_none_or_roomless_character_is_empty():
+    actor = WorldActor()
+    assert postsim_fragments(actor.world, None) == []
+    assert postsim_fragments(actor.world, _loose_character(actor.world)) == []
+
+
+def test_bulletin_fragments_none_roomless_or_boardless_is_empty():
+    actor = WorldActor()
+    assert bulletin_fragments(actor.world, None) == []
+    assert bulletin_fragments(actor.world, _loose_character(actor.world)) == []
+    room = _room(actor.world)
+    reader = _character(actor.world, room, "Kell")
+    assert bulletin_fragments(actor.world, reader) == []  # in a room, but no board
+
+
+def test_bulletin_fragments_reports_headlines_and_notices():
+    actor = WorldActor()
+    room = _room(actor.world)
+    reader = _character(actor.world, room, "Kell")
+    board = spawn_bulletin_board(actor.world, room_id=room.id)
+    spawn_entity(
+        actor.world,
+        [
+            IdentityComponent(name="sheet", kind="gossip-sheet"),
+            GossipSheetComponent(
+                edition=2, headlines=("Mayor resigns", "Fair on Sunday"), published_at_epoch=0
+            ),
+        ],
+    )
+    notice = spawn_entity(
+        actor.world,
+        [
+            IdentityComponent(name="notice", kind="notice"),
+            BulletinNoticeComponent(text="Lost cat", author_id=str(reader.id), posted_at_epoch=0),
+        ],
+    )
+    board.add_relationship(Contains(mode=ContainmentMode.CONTAINER), notice.id)
+
+    lines = bulletin_fragments(actor.world, reader)
+    assert "Gossip sheet #2: Mayor resigns" in lines
+    assert "A notice on the board here reads: Lost cat" in lines

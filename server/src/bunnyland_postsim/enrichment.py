@@ -15,9 +15,11 @@ from bunnyland.core.events import RoomGeneratedEvent
 from bunnyland.core.world_actor import WorldActor
 from relics import World
 
+from .bulletins import boards_in_room
 from .components import CourierComponent, MailboxComponent
+from .gazette import ensure_gazette
 from .mailboxes import mailboxes_in_room
-from .prefabs import spawn_courier, spawn_mailbox
+from .prefabs import spawn_bulletin_board, spawn_courier, spawn_mailbox
 
 #: Words that mark a generated room as a settlement worth wiring into the postal network.
 SETTLEMENT_TERMS = (
@@ -67,7 +69,12 @@ def _has_courier(world: World) -> bool:
 
 
 class PostWorldgenHook:
-    """Place a mailbox in every generated settlement, and a courier in the first one."""
+    """Wire every generated settlement into the postal network and the gossip sheet.
+
+    Each settlement gets a mailbox (for v1 mail) and a bulletin board (for v2 news); the first
+    settlement also stations a courier, and the world always ends up with exactly one gossip-sheet
+    press. Every step is idempotent so re-running the hook never double-seeds a room.
+    """
 
     def subscribe(self, actor: WorldActor) -> None:
         self._actor = actor
@@ -83,8 +90,11 @@ class PostWorldgenHook:
         room = world.get_entity(room_id)
         if not any(box.has_component(MailboxComponent) for box in mailboxes_in_room(world, room)):
             spawn_mailbox(world, room_id=room_id)
+        if not boards_in_room(world, room):
+            spawn_bulletin_board(world, room_id=room_id)
         if not _has_courier(world):
             spawn_courier(world, room_id=room_id)
+        ensure_gazette(world)
 
 
 __all__ = ["PostWorldgenHook", "SETTLEMENT_TERMS"]

@@ -20,6 +20,7 @@ from bunnyland.core import (
 from relics import Entity, World
 
 from .components import CourierComponent, LetterComponent, MailboxComponent, ParcelComponent
+from .gazette_components import BulletinBoardComponent, GazetteComponent, NewsdeskComponent
 
 
 def _link_into_room(world: World, entity: Entity, room_id) -> None:
@@ -105,4 +106,39 @@ def spawn_parcel(
     return parcel
 
 
-__all__ = ["spawn_courier", "spawn_letter", "spawn_mailbox", "spawn_parcel"]
+def spawn_bulletin_board(
+    world: World, *, room_id=None, label: str = "bulletin board"
+) -> Entity:
+    """Spawn a public bulletin-board container, optionally placed in ``room_id``."""
+    board = spawn_entity(
+        world,
+        [
+            IdentityComponent(name=label, kind="bulletin-board", tags=("postsim",)),
+            ContainerComponent(),
+            BulletinBoardComponent(label=label),
+        ],
+    )
+    _link_into_room(world, board, room_id)
+    return board
+
+
+def spawn_gazette(world: World, *, name: str = "gossip sheet", home_room_id: str = "") -> Entity:
+    """Spawn a gossip-sheet press (with its newsdesk buffer), optionally homed to a room."""
+    return spawn_entity(
+        world,
+        [
+            IdentityComponent(name=name, kind="gazette", tags=("postsim",)),
+            GazetteComponent(name=name, home_room_id=home_room_id),
+            NewsdeskComponent(),
+        ],
+    )
+
+
+__all__ = [
+    "spawn_bulletin_board",
+    "spawn_courier",
+    "spawn_gazette",
+    "spawn_letter",
+    "spawn_mailbox",
+    "spawn_parcel",
+]

@@ -14,9 +14,14 @@ from __future__ import annotations
 
 from relics import Entity, World
 
+from .bulletins import boards_in_room, latest_edition, notices_on_board
 from .components import LetterComponent, MailInTransitComponent, ParcelComponent
+from .gazette_components import BulletinNoticeComponent, GossipSheetComponent
 from .mailboxes import mail_in_mailbox, mailboxes_in_room
 from .spatial import room_of
+
+#: How many gossip-sheet headlines / board notices a fragment surfaces, so the prompt stays lean.
+_FRAGMENT_LIMIT = 3
 
 
 def postsim_fragments(world: World, character: Entity) -> list[str]:
@@ -40,4 +45,31 @@ def postsim_fragments(world: World, character: Entity) -> list[str]:
     return sorted(dict.fromkeys(lines))
 
 
-__all__ = ["postsim_fragments"]
+def bulletin_fragments(world: World, character: Entity) -> list[str]:
+    """Surface the latest gossip-sheet headlines and board notices where a character stands.
+
+    Only fires when a bulletin board shares the character's room. Lines are capped, de-duplicated,
+    and returned sorted so the prompt is concise and deterministic.
+    """
+    if character is None:
+        return []
+    room = room_of(world, character.id)
+    if room is None:
+        return []
+    boards = boards_in_room(world, room)
+    if not boards:
+        return []
+    lines: list[str] = []
+    edition = latest_edition(world)
+    if edition is not None:
+        sheet = edition.get_component(GossipSheetComponent)
+        for headline in sheet.headlines[:_FRAGMENT_LIMIT]:
+            lines.append(f"Gossip sheet #{sheet.edition}: {headline}")
+    for board in boards:
+        for notice in notices_on_board(world, board)[:_FRAGMENT_LIMIT]:
+            text = notice.get_component(BulletinNoticeComponent).text
+            lines.append(f"A notice on the board here reads: {text}")
+    return sorted(dict.fromkeys(lines))
+
+
+__all__ = ["bulletin_fragments", "postsim_fragments"]

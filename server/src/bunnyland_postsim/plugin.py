@@ -5,11 +5,13 @@ from __future__ import annotations
 from bunnyland.plugins import (
     CommandContribution,
     ContentContribution,
+    DependencyContribution,
     EcsContribution,
     Plugin,
     RuntimeContribution,
 )
 
+from .bulletins import BULLETIN_ACTION_DEFINITIONS, BULLETIN_ACTION_HANDLERS
 from .components import (
     CourierComponent,
     LetterComponent,
@@ -19,13 +21,26 @@ from .components import (
 )
 from .enrichment import PostWorldgenHook
 from .events import (
+    BoardReadEvent,
+    GazettePublishedEvent,
     LetterWrittenEvent,
     MailCheckedEvent,
     MailDeliveredEvent,
     MailPostedEvent,
     MailReturnedEvent,
+    NoticePostedEvent,
 )
-from .fragments import postsim_fragments
+from .fragments import bulletin_fragments, postsim_fragments
+from .gazette import install_gazette
+from .gazette_components import (
+    BulletinBoardComponent,
+    BulletinNoticeComponent,
+    GazetteComponent,
+    GossipSheetComponent,
+    NewsdeskComponent,
+    PostedBy,
+    Reports,
+)
 from .install import install_postsim
 from .letters import LETTER_ACTION_DEFINITIONS, LETTER_ACTION_HANDLERS
 from .mailboxes import MAILBOX_ACTION_DEFINITIONS, MAILBOX_ACTION_HANDLERS
@@ -37,8 +52,10 @@ def plugin() -> Plugin:
     return Plugin(
         id=PLUGIN_ID,
         name="Bunnyland Postsim",
-        version="0.1.0",
+        version="0.2.0",
         default_enabled=True,
+        # Optional synergy: wildsim's hunt/predator events flavour the gossip sheet when present.
+        dependencies=DependencyContribution(recommends=("bunnyland.wildsim",)),
         ecs=EcsContribution(
             components=(
                 LetterComponent,
@@ -46,24 +63,41 @@ def plugin() -> Plugin:
                 MailInTransitComponent,
                 MailboxComponent,
                 CourierComponent,
+                GazetteComponent,
+                NewsdeskComponent,
+                GossipSheetComponent,
+                BulletinBoardComponent,
+                BulletinNoticeComponent,
             ),
+            edges=(Reports, PostedBy),
         ),
         commands=CommandContribution(
-            action_handlers=LETTER_ACTION_HANDLERS + MAILBOX_ACTION_HANDLERS,
-            action_definitions=LETTER_ACTION_DEFINITIONS + MAILBOX_ACTION_DEFINITIONS,
+            action_handlers=(
+                *LETTER_ACTION_HANDLERS,
+                *MAILBOX_ACTION_HANDLERS,
+                *BULLETIN_ACTION_HANDLERS,
+            ),
+            action_definitions=(
+                *LETTER_ACTION_DEFINITIONS,
+                *MAILBOX_ACTION_DEFINITIONS,
+                *BULLETIN_ACTION_DEFINITIONS,
+            ),
             typed_events=(
                 LetterWrittenEvent,
                 MailPostedEvent,
                 MailDeliveredEvent,
                 MailReturnedEvent,
                 MailCheckedEvent,
+                GazettePublishedEvent,
+                NoticePostedEvent,
+                BoardReadEvent,
             ),
         ),
         runtime=RuntimeContribution(
-            service_factories=(install_postsim,),
+            service_factories=(install_postsim, install_gazette),
         ),
         content=ContentContribution(
-            prompt_fragments=(postsim_fragments,),
+            prompt_fragments=(postsim_fragments, bulletin_fragments),
             worldgen_hooks=(PostWorldgenHook,),
         ),
     )
