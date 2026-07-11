@@ -12,8 +12,8 @@ from bunnyland.core import (
     container_of,
     spawn_entity,
 )
-from bunnyland.mechanics.history import record_world_history
-from bunnyland.mechanics.storyteller import IncidentComponent
+from bunnyland.foundation.history.mechanics import record_world_history
+from bunnyland.foundation.storyteller.mechanics import IncidentComponent
 
 from bunnyland_postsim.gazette import (
     GAZETTE_INCIDENT_KIND,
@@ -249,9 +249,7 @@ def test_scandal_edition_registers_one_open_incident():
     assert incidents[0].get_component(IncidentComponent).room_id == str(room.id)
 
     # A second scandal while the first is unresolved must not pile up another incident.
-    _seed_history(
-        world, "A scandal at the fair!", event_id="e2", epoch=1, tags=("scandal",)
-    )
+    _seed_history(world, "A scandal at the fair!", event_id="e2", epoch=1, tags=("scandal",))
     GazetteConsequence().process(world, 1)
     assert len(_incidents(world, GAZETTE_INCIDENT_KIND)) == 1
 

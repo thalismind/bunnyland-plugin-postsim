@@ -12,7 +12,7 @@ from bunnyland.core import (
     WorldActor,
     spawn_entity,
 )
-from bunnyland.mechanics.social import bond_between
+from bunnyland.foundation.social.mechanics import bond_between
 
 from bunnyland_postsim import (
     PostConsequence,

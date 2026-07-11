@@ -47,9 +47,7 @@ def _ctx(actor):
 
 def _deliver_into(world, mailbox, addressee_id, sender_id="entity_1"):
     """Drop a delivered (not in transit) letter addressed to ``addressee_id`` into a mailbox."""
-    letter = spawn_letter(
-        world, text="hi", sender_id=sender_id, addressee_id=str(addressee_id)
-    )
+    letter = spawn_letter(world, text="hi", sender_id=sender_id, addressee_id=str(addressee_id))
     mailbox.add_relationship(Contains(mode=ContainmentMode.CONTAINER), letter.id)
     return letter
 
@@ -112,9 +110,7 @@ def test_check_mail_rejects_non_mailbox_target():
     actor = WorldActor()
     room = _room(actor.world, "Hall")
     reader = _character(actor.world, room, "Kell")
-    not_a_box = spawn_entity(
-        actor.world, [IdentityComponent(name="crate", kind="item")]
-    )
+    not_a_box = spawn_entity(actor.world, [IdentityComponent(name="crate", kind="item")])
     room.add_relationship(Contains(mode=ContainmentMode.ROOM_CONTENT), not_a_box.id)
 
     result = CheckMailHandler().execute(

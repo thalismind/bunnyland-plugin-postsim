@@ -6,7 +6,7 @@ owns that effect so the courier consequence can simply call
 :func:`apply_care_package_delivery` when it drops a care package at its destination.
 
 The affect bump is a small, clamped rise in ``valence`` (the pleasant/unpleasant mood axis);
-the bond warms via the shared :func:`bunnyland.mechanics.social.adjust_bond` so a care package
+the bond warms via Foundation Social's shared ``adjust_bond`` service so a care package
 reads exactly like a kind gesture between two characters.
 """
 
@@ -16,7 +16,7 @@ from dataclasses import replace
 
 from bunnyland.core import AffectComponent
 from bunnyland.core.ecs import parse_entity_id, replace_component
-from bunnyland.mechanics.social import adjust_bond
+from bunnyland.foundation.social.mechanics import adjust_bond
 from relics import World
 
 #: How much a delivered care package lifts the recipient's valence, clamped to the axis range.

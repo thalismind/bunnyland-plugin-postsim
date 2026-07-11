@@ -35,11 +35,11 @@ from bunnyland.core import (
 )
 from bunnyland.core.ecs import parse_entity_id, replace_component
 from bunnyland.core.events import DomainEvent, EventVisibility, event_base
-from bunnyland.mechanics.history import (
+from bunnyland.foundation.history.mechanics import (
     WorldHistoryRecordComponent,
     world_history_records,
 )
-from bunnyland.mechanics.storyteller import IncidentComponent
+from bunnyland.foundation.storyteller.mechanics import IncidentComponent
 from relics import Entity, World
 
 from .events import GazettePublishedEvent
@@ -246,9 +246,7 @@ class GazetteConsequence:
             ],
         )
         if room is not None:
-            room.add_relationship(
-                Contains(mode=ContainmentMode.ROOM_CONTENT), incident_entity.id
-            )
+            room.add_relationship(Contains(mode=ContainmentMode.ROOM_CONTENT), incident_entity.id)
 
 
 def _wild_news_events() -> tuple[type, ...]:

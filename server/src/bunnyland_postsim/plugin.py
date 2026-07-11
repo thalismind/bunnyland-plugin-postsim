@@ -19,7 +19,7 @@ from .components import (
     MailInTransitComponent,
     ParcelComponent,
 )
-from .enrichment import PostWorldgenHook
+from .enrichment import PostGenerationEnricher
 from .events import (
     BoardReadEvent,
     GazettePublishedEvent,
@@ -98,7 +98,7 @@ def plugin() -> Plugin:
         ),
         content=ContentContribution(
             prompt_fragments=(postsim_fragments, bulletin_fragments),
-            worldgen_hooks=(PostWorldgenHook,),
+            generation_enrichers=(PostGenerationEnricher(),),
         ),
     )
 

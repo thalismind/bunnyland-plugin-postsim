@@ -33,7 +33,7 @@ from .components import (
     ParcelComponent,
 )
 from .couriers import PostConsequence
-from .enrichment import PostWorldgenHook
+from .enrichment import PostGenerationEnricher
 from .events import (
     BoardReadEvent,
     GazettePublishedEvent,
@@ -123,7 +123,7 @@ __all__ = [
     "ParcelComponent",
     "PostConsequence",
     "PostNoticeHandler",
-    "PostWorldgenHook",
+    "PostGenerationEnricher",
     "PostedBy",
     "ReadBoardHandler",
     "Reports",

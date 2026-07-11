@@ -149,8 +149,7 @@ class PostConsequence:
         transit: MailInTransitComponent,
     ) -> list[DomainEvent]:
         is_care = (
-            mail.has_component(ParcelComponent)
-            and mail.get_component(ParcelComponent).care_package
+            mail.has_component(ParcelComponent) and mail.get_component(ParcelComponent).care_package
         )
         if is_care:
             apply_care_package_delivery(world, transit.sender_id, transit.addressee_id)

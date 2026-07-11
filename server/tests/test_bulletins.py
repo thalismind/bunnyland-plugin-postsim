@@ -75,9 +75,7 @@ def _edition(world, *, edition=1, headlines=("News!",), epoch=0):
         world,
         [
             IdentityComponent(name=f"gossip sheet #{edition}", kind="gossip-sheet"),
-            GossipSheetComponent(
-                edition=edition, headlines=headlines, published_at_epoch=epoch
-            ),
+            GossipSheetComponent(edition=edition, headlines=headlines, published_at_epoch=epoch),
         ],
     )
 
@@ -230,9 +228,7 @@ def test_read_board_reports_edition_and_notice_count():
     PostNoticeHandler().execute(
         _ctx(actor), _cmd(character.id, "post-notice", {"text": "For sale"})
     )
-    result = ReadBoardHandler().execute(
-        _ctx(actor), _cmd(character.id, "read-board", {})
-    )
+    result = ReadBoardHandler().execute(_ctx(actor), _cmd(character.id, "read-board", {}))
     assert result.ok
     event = result.events[0]
     assert event.board_id == str(board.id)
@@ -242,9 +238,7 @@ def test_read_board_reports_edition_and_notice_count():
 
 def test_read_board_with_only_notices_and_no_edition():
     actor, _room, character, _board = _scenario()
-    PostNoticeHandler().execute(
-        _ctx(actor), _cmd(character.id, "post-notice", {"text": "notice"})
-    )
+    PostNoticeHandler().execute(_ctx(actor), _cmd(character.id, "post-notice", {"text": "notice"}))
     result = ReadBoardHandler().execute(_ctx(actor), _cmd(character.id, "read-board", {}))
     assert result.ok
     assert result.events[0].edition == 0

@@ -106,9 +106,7 @@ def spawn_parcel(
     return parcel
 
 
-def spawn_bulletin_board(
-    world: World, *, room_id=None, label: str = "bulletin board"
-) -> Entity:
+def spawn_bulletin_board(world: World, *, room_id=None, label: str = "bulletin board") -> Entity:
     """Spawn a public bulletin-board container, optionally placed in ``room_id``."""
     board = spawn_entity(
         world,
