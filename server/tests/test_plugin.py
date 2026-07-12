@@ -22,6 +22,7 @@ from bunnyland_postsim import (
     install_postsim,
     postsim_fragments,
 )
+from bunnyland_postsim.integration_3d import install_postsim_3d
 from bunnyland_postsim.plugin import PLUGIN_ID
 from bunnyland_postsim.plugin import bunnyland_plugins as _plugins
 
@@ -61,6 +62,7 @@ def test_plugin_version():
 def test_plugin_recommends_wildsim_synergy():
     plugin = _plugins()[0]
     assert "bunnyland.wildsim" in plugin.dependencies.recommends
+    assert plugin.dependencies.integrates_with == ("bunnyland.3d",)
 
 
 def test_plugin_applies_and_registers_verbs():
@@ -81,6 +83,7 @@ def test_plugin_installs_both_service_factories():
     plugin = _plugins()[0]
     assert install_postsim in plugin.runtime.service_factories
     assert install_gazette in plugin.runtime.service_factories
+    assert plugin.runtime.integration_factories == (install_postsim_3d,)
 
 
 def test_plugin_typed_events_registered():

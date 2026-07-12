@@ -42,6 +42,7 @@ from .gazette_components import (
     Reports,
 )
 from .install import install_postsim
+from .integration_3d import install_postsim_3d
 from .letters import LETTER_ACTION_DEFINITIONS, LETTER_ACTION_HANDLERS
 from .mailboxes import MAILBOX_ACTION_DEFINITIONS, MAILBOX_ACTION_HANDLERS
 
@@ -55,7 +56,9 @@ def plugin() -> Plugin:
         version="0.2.0",
         default_enabled=True,
         # Optional synergy: wildsim's hunt/predator events flavour the gossip sheet when present.
-        dependencies=DependencyContribution(recommends=("bunnyland.wildsim",)),
+        dependencies=DependencyContribution(
+            recommends=("bunnyland.wildsim",), integrates_with=("bunnyland.3d",)
+        ),
         ecs=EcsContribution(
             components=(
                 LetterComponent,
@@ -95,6 +98,7 @@ def plugin() -> Plugin:
         ),
         runtime=RuntimeContribution(
             service_factories=(install_postsim, install_gazette),
+            integration_factories=(install_postsim_3d,),
         ),
         content=ContentContribution(
             prompt_fragments=(postsim_fragments, bulletin_fragments),
