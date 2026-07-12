@@ -14,8 +14,8 @@ entity -> not in a room -> no mailbox -> nothing to collect.
 from __future__ import annotations
 
 from bunnyland.core import ContainmentMode, contents
-from bunnyland.core.actions import ActionArgument, ActionDefinition
-from bunnyland.core.commands import CommandCost, Lane, SubmittedCommand
+from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
+from bunnyland.core.commands import Lane, SubmittedCommand
 from bunnyland.core.events import EventVisibility
 from bunnyland.core.handlers import (
     HandlerContext,
@@ -125,7 +125,7 @@ CHECK_MAIL_DEF = ActionDefinition(
     title="Check mail",
     description="Collect delivered mail addressed to you from a mailbox in your room.",
     lane=Lane.WORLD,
-    cost=CommandCost(action=1),
+    cost=effort_cost(action=ActionEffort.ROUTINE),
     arguments={
         "mailbox_id": ActionArgument(
             title="Mailbox",

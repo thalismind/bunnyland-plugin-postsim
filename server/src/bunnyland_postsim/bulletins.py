@@ -18,8 +18,8 @@ wrong-kind / not-here -> apply.
 from __future__ import annotations
 
 from bunnyland.core import ContainmentMode, Contains, IdentityComponent, contents, spawn_entity
-from bunnyland.core.actions import ActionArgument, ActionDefinition
-from bunnyland.core.commands import CommandCost, Lane, SubmittedCommand
+from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
+from bunnyland.core.commands import Lane, SubmittedCommand
 from bunnyland.core.events import EventVisibility
 from bunnyland.core.handlers import (
     HandlerContext,
@@ -211,7 +211,7 @@ POST_NOTICE_DEF = ActionDefinition(
     title="Post notice",
     description="Pin a written notice to a bulletin board in your room.",
     lane=Lane.WORLD,
-    cost=CommandCost(action=1),
+    cost=effort_cost(action=ActionEffort.ROUTINE),
     arguments={
         "text": ActionArgument(
             title="Text", description="What the notice says.", kind="string", required=True
@@ -229,7 +229,7 @@ READ_BOARD_DEF = ActionDefinition(
     title="Read board",
     description="Read the latest gossip sheet and the notices on a bulletin board.",
     lane=Lane.FOCUS,
-    cost=CommandCost(focus=1),
+    cost=effort_cost(),
     arguments={
         "board_id": ActionArgument(
             title="Board",

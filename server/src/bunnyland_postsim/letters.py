@@ -22,8 +22,8 @@ from bunnyland.core import (
     PortableComponent,
     spawn_entity,
 )
-from bunnyland.core.actions import ActionArgument, ActionDefinition
-from bunnyland.core.commands import CommandCost, Lane, SubmittedCommand
+from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
+from bunnyland.core.commands import Lane, SubmittedCommand
 from bunnyland.core.ecs import replace_component
 from bunnyland.core.events import EventVisibility
 from bunnyland.core.handlers import (
@@ -207,7 +207,7 @@ WRITE_LETTER_DEF = ActionDefinition(
     title="Write letter",
     description="Write a letter addressed to another character.",
     lane=Lane.WORLD,
-    cost=CommandCost(action=1),
+    cost=effort_cost(action=ActionEffort.ROUTINE),
     arguments={
         "text": ActionArgument(
             title="Text", description="What the letter says.", kind="string", required=True
@@ -226,7 +226,7 @@ SEND_PARCEL_DEF = ActionDefinition(
     title="Send parcel",
     description="Post a held letter into a mailbox, optionally wrapping a gift to send along.",
     lane=Lane.WORLD,
-    cost=CommandCost(action=1),
+    cost=effort_cost(action=ActionEffort.ROUTINE),
     arguments={
         "item_id": ActionArgument(
             title="Letter",
