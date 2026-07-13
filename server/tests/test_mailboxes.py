@@ -11,6 +11,7 @@ from bunnyland.core import (
 )
 from bunnyland.core.commands import CommandCost, Lane, build_submitted_command
 from bunnyland.core.handlers import HandlerContext
+from conftest import execute_handler
 
 from bunnyland_postsim import CheckMailHandler, spawn_letter, spawn_mailbox
 from bunnyland_postsim.mailboxes import mailbox_in_room
@@ -59,7 +60,7 @@ def test_check_mail_collects_delivered_mail_for_you():
     mailbox = spawn_mailbox(actor.world, room_id=room.id)
     letter = _deliver_into(actor.world, mailbox, reader.id)
 
-    result = CheckMailHandler().execute(_ctx(actor), _cmd(reader.id, {}))
+    result = execute_handler(CheckMailHandler(), _ctx(actor), _cmd(reader.id, {}))
 
     assert result.ok
     assert result.events[0].mail_ids == (str(letter.id),)
@@ -75,7 +76,7 @@ def test_check_mail_ignores_mail_for_others():
     mailbox = spawn_mailbox(actor.world, room_id=room.id)
     _deliver_into(actor.world, mailbox, other.id)
 
-    result = CheckMailHandler().execute(_ctx(actor), _cmd(reader.id, {}))
+    result = execute_handler(CheckMailHandler(), _ctx(actor), _cmd(reader.id, {}))
     assert not result.ok
     assert result.reason == "there is no mail for you here"
 
@@ -85,7 +86,7 @@ def test_check_mail_rejects_when_not_in_a_room():
     loner = spawn_entity(
         actor.world, [IdentityComponent(name="Kell", kind="character"), CharacterComponent()]
     )
-    result = CheckMailHandler().execute(_ctx(actor), _cmd(loner.id, {}))
+    result = execute_handler(CheckMailHandler(), _ctx(actor), _cmd(loner.id, {}))
     assert not result.ok
     assert result.reason == "you are not in a room"
 
@@ -94,14 +95,14 @@ def test_check_mail_rejects_when_no_mailbox():
     actor = WorldActor()
     room = _room(actor.world, "Field")
     reader = _character(actor.world, room, "Kell")
-    result = CheckMailHandler().execute(_ctx(actor), _cmd(reader.id, {}))
+    result = execute_handler(CheckMailHandler(), _ctx(actor), _cmd(reader.id, {}))
     assert not result.ok
     assert result.reason == "there is no mailbox here"
 
 
 def test_check_mail_rejects_invalid_character():
     actor = WorldActor()
-    result = CheckMailHandler().execute(_ctx(actor), _cmd("???", {}))
+    result = execute_handler(CheckMailHandler(), _ctx(actor), _cmd("???", {}))
     assert not result.ok
     assert result.reason == "invalid character id"
 
@@ -113,8 +114,8 @@ def test_check_mail_rejects_non_mailbox_target():
     not_a_box = spawn_entity(actor.world, [IdentityComponent(name="crate", kind="item")])
     room.add_relationship(Contains(mode=ContainmentMode.ROOM_CONTENT), not_a_box.id)
 
-    result = CheckMailHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"mailbox_id": str(not_a_box.id)})
+    result = execute_handler(
+        CheckMailHandler(), _ctx(actor), _cmd(reader.id, {"mailbox_id": str(not_a_box.id)})
     )
     assert not result.ok
     assert result.reason == "that is not a mailbox"

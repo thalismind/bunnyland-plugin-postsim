@@ -13,6 +13,7 @@ from bunnyland.core import (
 )
 from bunnyland.core.commands import CommandCost, Lane, build_submitted_command
 from bunnyland.core.handlers import HandlerContext
+from conftest import execute_handler
 
 from bunnyland_postsim.bulletins import (
     PostNoticeHandler,
@@ -118,8 +119,10 @@ def test_latest_edition_none_when_unpublished():
 
 def test_post_notice_pins_and_links_author():
     actor, _room, character, board = _scenario()
-    result = PostNoticeHandler().execute(
-        _ctx(actor), _cmd(character.id, "post-notice", {"text": "Lost cat, reward!"})
+    result = execute_handler(
+        PostNoticeHandler(),
+        _ctx(actor),
+        _cmd(character.id, "post-notice", {"text": "Lost cat, reward!"}),
     )
     assert result.ok
     notices = notices_on_board(actor.world, board)
@@ -133,7 +136,8 @@ def test_post_notice_pins_and_links_author():
 
 def test_post_notice_explicit_board_id():
     actor, _room, character, board = _scenario()
-    result = PostNoticeHandler().execute(
+    result = execute_handler(
+        PostNoticeHandler(),
         _ctx(actor),
         _cmd(character.id, "post-notice", {"text": "Meeting tonight", "board_id": str(board.id)}),
     )
@@ -143,8 +147,8 @@ def test_post_notice_explicit_board_id():
 
 def test_post_notice_requires_text():
     actor, _room, character, _board = _scenario()
-    result = PostNoticeHandler().execute(
-        _ctx(actor), _cmd(character.id, "post-notice", {"text": "   "})
+    result = execute_handler(
+        PostNoticeHandler(), _ctx(actor), _cmd(character.id, "post-notice", {"text": "   "})
     )
     assert not result.ok
     assert result.reason == "a notice needs some text"
@@ -156,8 +160,8 @@ def test_post_notice_requires_room():
     character = spawn_entity(
         actor.world, [IdentityComponent(name="Drifter", kind="character"), CharacterComponent()]
     )
-    result = PostNoticeHandler().execute(
-        _ctx(actor), _cmd(character.id, "post-notice", {"text": "hello"})
+    result = execute_handler(
+        PostNoticeHandler(), _ctx(actor), _cmd(character.id, "post-notice", {"text": "hello"})
     )
     assert not result.ok
     assert result.reason == "you are not in a room"
@@ -167,8 +171,8 @@ def test_post_notice_requires_a_board():
     actor = WorldActor()
     room = _room(actor.world)
     character = _character(actor.world, room)
-    result = PostNoticeHandler().execute(
-        _ctx(actor), _cmd(character.id, "post-notice", {"text": "hello"})
+    result = execute_handler(
+        PostNoticeHandler(), _ctx(actor), _cmd(character.id, "post-notice", {"text": "hello"})
     )
     assert not result.ok
     assert result.reason == "there is no bulletin board here"
@@ -176,7 +180,8 @@ def test_post_notice_requires_a_board():
 
 def test_post_notice_invalid_board_id():
     actor, _room, character, _board = _scenario()
-    result = PostNoticeHandler().execute(
+    result = execute_handler(
+        PostNoticeHandler(),
         _ctx(actor),
         _cmd(character.id, "post-notice", {"text": "hi", "board_id": "not-an-id"}),
     )
@@ -188,7 +193,8 @@ def test_post_notice_wrong_kind_board():
     actor, room, character, _board = _scenario()
     rock = spawn_entity(actor.world, [IdentityComponent(name="rock", kind="item")])
     room.add_relationship(Contains(mode=ContainmentMode.ROOM_CONTENT), rock.id)
-    result = PostNoticeHandler().execute(
+    result = execute_handler(
+        PostNoticeHandler(),
         _ctx(actor),
         _cmd(character.id, "post-notice", {"text": "hi", "board_id": str(rock.id)}),
     )
@@ -200,7 +206,8 @@ def test_post_notice_board_in_another_room():
     actor, room, character, _board = _scenario()
     elsewhere = _room(actor.world, "Far Field")
     far_board = spawn_bulletin_board(actor.world, room_id=elsewhere.id)
-    result = PostNoticeHandler().execute(
+    result = execute_handler(
+        PostNoticeHandler(),
         _ctx(actor),
         _cmd(character.id, "post-notice", {"text": "hi", "board_id": str(far_board.id)}),
     )
@@ -210,8 +217,8 @@ def test_post_notice_board_in_another_room():
 
 def test_post_notice_missing_character():
     actor, _room, _character, _board = _scenario()
-    result = PostNoticeHandler().execute(
-        _ctx(actor), _cmd("bogus-9", "post-notice", {"text": "hi"})
+    result = execute_handler(
+        PostNoticeHandler(), _ctx(actor), _cmd("bogus-9", "post-notice", {"text": "hi"})
     )
     assert not result.ok
 
@@ -225,10 +232,10 @@ def test_read_board_reports_edition_and_notice_count():
     actor, _room, character, board = _scenario()
     _edition(actor.world, edition=4, headlines=("Big news!",))
     # Pin one notice first.
-    PostNoticeHandler().execute(
-        _ctx(actor), _cmd(character.id, "post-notice", {"text": "For sale"})
+    execute_handler(
+        PostNoticeHandler(), _ctx(actor), _cmd(character.id, "post-notice", {"text": "For sale"})
     )
-    result = ReadBoardHandler().execute(_ctx(actor), _cmd(character.id, "read-board", {}))
+    result = execute_handler(ReadBoardHandler(), _ctx(actor), _cmd(character.id, "read-board", {}))
     assert result.ok
     event = result.events[0]
     assert event.board_id == str(board.id)
@@ -238,8 +245,10 @@ def test_read_board_reports_edition_and_notice_count():
 
 def test_read_board_with_only_notices_and_no_edition():
     actor, _room, character, _board = _scenario()
-    PostNoticeHandler().execute(_ctx(actor), _cmd(character.id, "post-notice", {"text": "notice"}))
-    result = ReadBoardHandler().execute(_ctx(actor), _cmd(character.id, "read-board", {}))
+    execute_handler(
+        PostNoticeHandler(), _ctx(actor), _cmd(character.id, "post-notice", {"text": "notice"})
+    )
+    result = execute_handler(ReadBoardHandler(), _ctx(actor), _cmd(character.id, "read-board", {}))
     assert result.ok
     assert result.events[0].edition == 0
     assert result.events[0].notice_count == 1
@@ -247,7 +256,7 @@ def test_read_board_with_only_notices_and_no_edition():
 
 def test_read_empty_board_is_rejected():
     actor, _room, character, _board = _scenario()
-    result = ReadBoardHandler().execute(_ctx(actor), _cmd(character.id, "read-board", {}))
+    result = execute_handler(ReadBoardHandler(), _ctx(actor), _cmd(character.id, "read-board", {}))
     assert not result.ok
     assert result.reason == "there is nothing posted on the board here"
 
@@ -257,7 +266,7 @@ def test_read_board_requires_room():
     character = spawn_entity(
         actor.world, [IdentityComponent(name="Drifter", kind="character"), CharacterComponent()]
     )
-    result = ReadBoardHandler().execute(_ctx(actor), _cmd(character.id, "read-board", {}))
+    result = execute_handler(ReadBoardHandler(), _ctx(actor), _cmd(character.id, "read-board", {}))
     assert not result.ok
     assert result.reason == "you are not in a room"
 
@@ -266,15 +275,15 @@ def test_read_board_requires_a_board():
     actor = WorldActor()
     room = _room(actor.world)
     character = _character(actor.world, room)
-    result = ReadBoardHandler().execute(_ctx(actor), _cmd(character.id, "read-board", {}))
+    result = execute_handler(ReadBoardHandler(), _ctx(actor), _cmd(character.id, "read-board", {}))
     assert not result.ok
     assert result.reason == "there is no bulletin board here"
 
 
 def test_read_board_invalid_board_id():
     actor, _room, character, _board = _scenario()
-    result = ReadBoardHandler().execute(
-        _ctx(actor), _cmd(character.id, "read-board", {"board_id": "999"})
+    result = execute_handler(
+        ReadBoardHandler(), _ctx(actor), _cmd(character.id, "read-board", {"board_id": "999"})
     )
     assert not result.ok
     assert result.reason == "invalid board id"
@@ -286,8 +295,8 @@ def test_read_board_missing_board_entity():
     ghost = spawn_entity(actor.world, [IdentityComponent(name="gone", kind="item")])
     ghost_id = str(ghost.id)
     actor.world.remove(ghost.id)
-    result = ReadBoardHandler().execute(
-        _ctx(actor), _cmd(character.id, "read-board", {"board_id": ghost_id})
+    result = execute_handler(
+        ReadBoardHandler(), _ctx(actor), _cmd(character.id, "read-board", {"board_id": ghost_id})
     )
     assert not result.ok
     assert result.reason == "board does not exist"
@@ -295,11 +304,15 @@ def test_read_board_missing_board_entity():
 
 def test_notices_sorted_by_post_epoch():
     actor, _room, character, board = _scenario()
-    PostNoticeHandler().execute(
-        _ctx(actor, epoch=5), _cmd(character.id, "post-notice", {"text": "later"})
+    execute_handler(
+        PostNoticeHandler(),
+        _ctx(actor, epoch=5),
+        _cmd(character.id, "post-notice", {"text": "later"}),
     )
-    PostNoticeHandler().execute(
-        _ctx(actor, epoch=1), _cmd(character.id, "post-notice", {"text": "earlier"})
+    execute_handler(
+        PostNoticeHandler(),
+        _ctx(actor, epoch=1),
+        _cmd(character.id, "post-notice", {"text": "earlier"}),
     )
     texts = [
         entity.get_component(BulletinNoticeComponent).text

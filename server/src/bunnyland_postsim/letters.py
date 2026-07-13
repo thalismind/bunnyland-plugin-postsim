@@ -20,19 +20,25 @@ from bunnyland.core import (
     HoldableComponent,
     IdentityComponent,
     PortableComponent,
-    spawn_entity,
 )
 from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
 from bunnyland.core.commands import Lane, SubmittedCommand
-from bunnyland.core.ecs import replace_component
 from bunnyland.core.events import EventVisibility
 from bunnyland.core.handlers import (
     HandlerContext,
     HandlerResult,
-    ok,
+    planned,
     rejected,
     require_character,
     require_entity,
+)
+from bunnyland.core.mutations import (
+    AddEdge,
+    AddEntity,
+    EntityReference,
+    MutationPlan,
+    RemoveEdge,
+    SetComponent,
 )
 
 from .components import (
@@ -43,7 +49,7 @@ from .components import (
 )
 from .events import LetterWrittenEvent, MailPostedEvent
 from .mailboxes import mailbox_in_room
-from .spatial import holder_of, move_entity, room_of
+from .spatial import holder_of, room_of
 
 
 class WriteLetterHandler:
@@ -67,30 +73,35 @@ class WriteLetterHandler:
         if rejection is not None:
             return rejection
 
-        letter = spawn_entity(
-            ctx.world,
-            [
-                IdentityComponent(name="letter", kind="mail", tags=("postsim",)),
-                PortableComponent(),
-                HoldableComponent(slot="hand"),
-                LetterComponent(
-                    text=text,
-                    sender_id=str(character_id),
-                    addressee_id=str(addressee_id),
-                ),
-            ],
-        )
-        character.add_relationship(Contains(mode=ContainmentMode.INVENTORY), letter.id)
-        return ok(
-            LetterWrittenEvent(
+        letter = EntityReference()
+        return planned(
+            MutationPlan(
+                (
+                    AddEntity(
+                        (
+                            IdentityComponent(name="letter", kind="mail", tags=("postsim",)),
+                            PortableComponent(),
+                            HoldableComponent(slot="hand"),
+                            LetterComponent(
+                                text=text,
+                                sender_id=str(character_id),
+                                addressee_id=str(addressee_id),
+                            ),
+                        ),
+                        reference=letter,
+                    ),
+                    AddEdge(character.id, letter, Contains(mode=ContainmentMode.INVENTORY)),
+                )
+            ),
+            lambda: LetterWrittenEvent(
                 **ctx.event_base(
                     visibility=EventVisibility.PRIVATE,
                     actor_id=str(character_id),
-                    target_ids=(str(letter.id),),
-                    mail_id=str(letter.id),
+                    target_ids=(str(letter.require()),),
+                    mail_id=str(letter.require()),
                     addressee_id=str(addressee_id),
                 )
-            )
+            ),
         )
 
 
@@ -144,31 +155,45 @@ class SendParcelHandler:
 
         care_package = bool(command.payload.get("care_package", False))
         is_parcel = gift is not None or care_package
+        operations = []
         if is_parcel:
-            replace_component(
-                letter,
-                ParcelComponent(
-                    wrapped_item_id=str(gift.id) if gift is not None else "",
-                    care_package=care_package,
+            operations.append(
+                SetComponent(
+                    letter.id,
+                    ParcelComponent(
+                        wrapped_item_id=str(gift.id) if gift is not None else "",
+                        care_package=care_package,
+                    ),
                 ),
             )
             if gift is not None:
-                move_entity(ctx.world, gift.id, letter.id, mode=ContainmentMode.CONTAINER)
+                operations.extend(
+                    (
+                        RemoveEdge(character_id, gift.id, Contains),
+                        AddEdge(letter.id, gift.id, Contains(mode=ContainmentMode.CONTAINER)),
+                    )
+                )
 
-        replace_component(
-            letter,
-            MailInTransitComponent(
-                sender_id=str(character_id),
-                addressee_id=str(addressee_id),
-                origin_room_id=str(origin.id),
-                destination_room_id=str(destination.id),
-                current_room_id=str(origin.id),
-                posted_at_epoch=ctx.epoch,
-                ttl_ticks=int(command.payload.get("ttl_ticks", DEFAULT_TTL_TICKS)),
-            ),
+        operations.extend(
+            (
+                SetComponent(
+                    letter.id,
+                    MailInTransitComponent(
+                        sender_id=str(character_id),
+                        addressee_id=str(addressee_id),
+                        origin_room_id=str(origin.id),
+                        destination_room_id=str(destination.id),
+                        current_room_id=str(origin.id),
+                        posted_at_epoch=ctx.epoch,
+                        ttl_ticks=int(command.payload.get("ttl_ticks", DEFAULT_TTL_TICKS)),
+                    ),
+                ),
+                RemoveEdge(character_id, letter_id, Contains),
+                AddEdge(mailbox.id, letter_id, Contains(mode=ContainmentMode.CONTAINER)),
+            )
         )
-        move_entity(ctx.world, letter_id, mailbox.id, mode=ContainmentMode.CONTAINER)
-        return ok(
+        return planned(
+            MutationPlan(tuple(operations)),
             MailPostedEvent(
                 **ctx.event_base(
                     visibility=EventVisibility.ROOM,
@@ -181,7 +206,7 @@ class SendParcelHandler:
                     is_parcel=is_parcel,
                     is_care_package=care_package,
                 )
-            )
+            ),
         )
 
     def _resolve_gift(self, ctx: HandlerContext, character_id, command: SubmittedCommand):

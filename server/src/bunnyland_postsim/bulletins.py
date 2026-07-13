@@ -17,18 +17,19 @@ wrong-kind / not-here -> apply.
 
 from __future__ import annotations
 
-from bunnyland.core import ContainmentMode, Contains, IdentityComponent, contents, spawn_entity
+from bunnyland.core import ContainmentMode, Contains, IdentityComponent, contents
 from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
 from bunnyland.core.commands import Lane, SubmittedCommand
 from bunnyland.core.events import EventVisibility
 from bunnyland.core.handlers import (
     HandlerContext,
     HandlerResult,
-    ok,
+    planned,
     rejected,
     require_character,
     require_entity,
 )
+from bunnyland.core.mutations import AddEdge, AddEntity, EntityReference, MutationPlan
 from relics import Entity, World
 
 from .events import BoardReadEvent, NoticePostedEvent
@@ -140,31 +141,36 @@ class PostNoticeHandler:
         if rejection is not None:
             return rejection
 
-        notice = spawn_entity(
-            ctx.world,
-            [
-                IdentityComponent(name="notice", kind="notice", tags=("postsim",)),
-                BulletinNoticeComponent(
-                    text=text,
-                    author_id=str(character_id),
-                    posted_at_epoch=ctx.epoch,
-                ),
-            ],
-        )
-        board.add_relationship(Contains(mode=ContainmentMode.CONTAINER), notice.id)
-        notice.add_relationship(PostedBy(), character_id)
-        return ok(
-            NoticePostedEvent(
+        notice = EntityReference()
+        return planned(
+            MutationPlan(
+                (
+                    AddEntity(
+                        (
+                            IdentityComponent(name="notice", kind="notice", tags=("postsim",)),
+                            BulletinNoticeComponent(
+                                text=text,
+                                author_id=str(character_id),
+                                posted_at_epoch=ctx.epoch,
+                            ),
+                        ),
+                        reference=notice,
+                    ),
+                    AddEdge(board.id, notice, Contains(mode=ContainmentMode.CONTAINER)),
+                    AddEdge(notice, character_id, PostedBy()),
+                )
+            ),
+            lambda: NoticePostedEvent(
                 **ctx.event_base(
                     visibility=EventVisibility.ROOM,
                     actor_id=str(character_id),
                     room_id=str(room.id),
-                    target_ids=(str(notice.id), str(board.id)),
-                    notice_id=str(notice.id),
+                    target_ids=(str(notice.require()), str(board.id)),
+                    notice_id=str(notice.require()),
                     board_id=str(board.id),
                     author_id=str(character_id),
                 )
-            )
+            ),
         )
 
 
@@ -191,7 +197,8 @@ class ReadBoardHandler:
         edition_number = (
             edition.get_component(GossipSheetComponent).edition if edition is not None else 0
         )
-        return ok(
+        return planned(
+            MutationPlan(),
             BoardReadEvent(
                 **ctx.event_base(
                     visibility=EventVisibility.PRIVATE,
@@ -202,7 +209,7 @@ class ReadBoardHandler:
                     edition=edition_number,
                     notice_count=len(notices),
                 )
-            )
+            ),
         )
 
 

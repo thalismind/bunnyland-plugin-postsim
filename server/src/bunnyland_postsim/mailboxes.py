@@ -13,23 +13,24 @@ entity -> not in a room -> no mailbox -> nothing to collect.
 
 from __future__ import annotations
 
-from bunnyland.core import ContainmentMode, contents
+from bunnyland.core import ContainmentMode, Contains, contents
 from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
 from bunnyland.core.commands import Lane, SubmittedCommand
 from bunnyland.core.events import EventVisibility
 from bunnyland.core.handlers import (
     HandlerContext,
     HandlerResult,
-    ok,
+    planned,
     rejected,
     require_character,
     require_entity,
 )
+from bunnyland.core.mutations import AddEdge, MutationPlan, RemoveEdge
 from relics import Entity, World
 
 from .components import LetterComponent, MailboxComponent, MailInTransitComponent
 from .events import MailCheckedEvent
-from .spatial import move_entity, room_of
+from .spatial import room_of
 
 
 def mailboxes_in_room(world: World, room: Entity) -> list[Entity]:
@@ -104,9 +105,16 @@ class CheckMailHandler:
         collected = delivered_mail_for(ctx.world, mailbox, str(character_id))
         if not collected:
             return rejected("there is no mail for you here")
+        operations = []
         for mail in collected:
-            move_entity(ctx.world, mail.id, character_id, mode=ContainmentMode.INVENTORY)
-        return ok(
+            operations.extend(
+                (
+                    RemoveEdge(mailbox.id, mail.id, Contains),
+                    AddEdge(character_id, mail.id, Contains(mode=ContainmentMode.INVENTORY)),
+                )
+            )
+        return planned(
+            MutationPlan(tuple(operations)),
             MailCheckedEvent(
                 **ctx.event_base(
                     visibility=EventVisibility.PRIVATE,
@@ -116,7 +124,7 @@ class CheckMailHandler:
                     mailbox_id=str(mailbox.id),
                     mail_ids=tuple(str(mail.id) for mail in collected),
                 )
-            )
+            ),
         )
 
 

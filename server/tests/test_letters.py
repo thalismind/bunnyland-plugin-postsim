@@ -14,6 +14,7 @@ from bunnyland.core import (
 from bunnyland.core.commands import CommandCost, Lane, build_submitted_command
 from bunnyland.core.ecs import parse_entity_id
 from bunnyland.core.handlers import HandlerContext
+from conftest import execute_handler
 
 from bunnyland_postsim import (
     LetterComponent,
@@ -73,7 +74,8 @@ def _scenario():
 def test_write_letter_creates_addressed_letter_in_inventory():
     actor, _origin, _dest, sender, addressee, _box = _scenario()
 
-    result = WriteLetterHandler().execute(
+    result = execute_handler(
+        WriteLetterHandler(),
         _ctx(actor),
         _cmd(sender.id, "write-letter", {"text": "hello", "addressee_id": str(addressee.id)}),
     )
@@ -89,7 +91,8 @@ def test_write_letter_creates_addressed_letter_in_inventory():
 
 def test_write_letter_rejects_empty_text():
     actor, _origin, _dest, sender, addressee, _box = _scenario()
-    result = WriteLetterHandler().execute(
+    result = execute_handler(
+        WriteLetterHandler(),
         _ctx(actor),
         _cmd(sender.id, "write-letter", {"text": "  ", "addressee_id": str(addressee.id)}),
     )
@@ -99,7 +102,8 @@ def test_write_letter_rejects_empty_text():
 
 def test_write_letter_rejects_missing_addressee():
     actor, _origin, _dest, sender, _addressee, _box = _scenario()
-    result = WriteLetterHandler().execute(
+    result = execute_handler(
+        WriteLetterHandler(),
         _ctx(actor),
         _cmd(sender.id, "write-letter", {"text": "hi", "addressee_id": "entity_9999"}),
     )
@@ -109,7 +113,8 @@ def test_write_letter_rejects_missing_addressee():
 
 def test_write_letter_rejects_invalid_character():
     actor, _origin, _dest, _sender, addressee, _box = _scenario()
-    result = WriteLetterHandler().execute(
+    result = execute_handler(
+        WriteLetterHandler(),
         _ctx(actor),
         _cmd("???", "write-letter", {"text": "hi", "addressee_id": str(addressee.id)}),
     )
@@ -121,7 +126,8 @@ def test_write_letter_rejects_invalid_character():
 
 
 def _write(actor, sender, addressee, text="hello"):
-    result = WriteLetterHandler().execute(
+    result = execute_handler(
+        WriteLetterHandler(),
         _ctx(actor),
         _cmd(sender.id, "write-letter", {"text": text, "addressee_id": str(addressee.id)}),
     )
@@ -133,8 +139,10 @@ def test_send_parcel_posts_letter_into_mailbox():
     actor, _origin, dest, sender, addressee, mailbox = _scenario()
     letter = _write(actor, sender, addressee)
 
-    result = SendParcelHandler().execute(
-        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)})
+    result = execute_handler(
+        SendParcelHandler(),
+        _ctx(actor),
+        _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)}),
     )
 
     assert result.ok
@@ -154,7 +162,8 @@ def test_send_parcel_wraps_a_gift_as_a_care_package():
     )
     _hold(sender, gift)
 
-    result = SendParcelHandler().execute(
+    result = execute_handler(
+        SendParcelHandler(),
         _ctx(actor),
         _cmd(
             sender.id,
@@ -177,8 +186,10 @@ def test_send_parcel_rejects_letter_not_held():
     sender.remove_relationship(Contains, letter.id)
     origin.add_relationship(Contains(mode=ContainmentMode.ROOM_CONTENT), letter.id)
 
-    result = SendParcelHandler().execute(
-        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)})
+    result = execute_handler(
+        SendParcelHandler(),
+        _ctx(actor),
+        _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)}),
     )
     assert not result.ok
     assert result.reason == "you are not holding that letter"
@@ -192,8 +203,8 @@ def test_send_parcel_rejects_non_letter_item():
     )
     _hold(sender, thing)
 
-    result = SendParcelHandler().execute(
-        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": str(thing.id)})
+    result = execute_handler(
+        SendParcelHandler(), _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": str(thing.id)})
     )
     assert not result.ok
     assert result.reason == "that is not a letter"
@@ -207,8 +218,10 @@ def test_send_parcel_rejects_when_no_mailbox_in_room():
     addressee = _character(actor.world, dest, "Kell")
     letter = _write(actor, sender, addressee)
 
-    result = SendParcelHandler().execute(
-        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)})
+    result = execute_handler(
+        SendParcelHandler(),
+        _ctx(actor),
+        _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)}),
     )
     assert not result.ok
     assert result.reason == "there is no mailbox here"
@@ -220,8 +233,10 @@ def test_send_parcel_rejects_when_addressee_has_no_room():
     # Remove the addressee from the world entirely.
     actor.world.remove(addressee.id)
 
-    result = SendParcelHandler().execute(
-        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)})
+    result = execute_handler(
+        SendParcelHandler(),
+        _ctx(actor),
+        _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)}),
     )
     assert not result.ok
     assert result.reason == "the addressee is nowhere to be found"
@@ -229,8 +244,8 @@ def test_send_parcel_rejects_when_addressee_has_no_room():
 
 def test_send_parcel_rejects_invalid_character():
     actor, _origin, _dest, _sender, _addressee, _box = _scenario()
-    result = SendParcelHandler().execute(
-        _ctx(actor), _cmd("???", "send-parcel", {"item_id": "entity_1"})
+    result = execute_handler(
+        SendParcelHandler(), _ctx(actor), _cmd("???", "send-parcel", {"item_id": "entity_1"})
     )
     assert not result.ok
     assert result.reason == "invalid character id"
@@ -238,8 +253,8 @@ def test_send_parcel_rejects_invalid_character():
 
 def test_send_parcel_rejects_invalid_item_id():
     actor, _origin, _dest, sender, _addressee, _box = _scenario()
-    result = SendParcelHandler().execute(
-        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": "???"})
+    result = execute_handler(
+        SendParcelHandler(), _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": "???"})
     )
     assert not result.ok
     assert result.reason == "invalid item id"
@@ -256,8 +271,10 @@ def test_send_parcel_rejects_addressee_present_but_roomless():
     )
     letter = _write(actor, sender, addressee)
 
-    result = SendParcelHandler().execute(
-        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)})
+    result = execute_handler(
+        SendParcelHandler(),
+        _ctx(actor),
+        _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)}),
     )
     assert not result.ok
     assert result.reason == "the addressee is nowhere to be found"
@@ -273,8 +290,10 @@ def test_send_parcel_rejects_when_sender_not_in_a_room():
     )
     letter = _write(actor, sender, addressee)
 
-    result = SendParcelHandler().execute(
-        _ctx(actor), _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)})
+    result = execute_handler(
+        SendParcelHandler(),
+        _ctx(actor),
+        _cmd(sender.id, "send-parcel", {"item_id": str(letter.id)}),
     )
     assert not result.ok
     assert result.reason == "you are not in a room"
@@ -283,7 +302,8 @@ def test_send_parcel_rejects_when_sender_not_in_a_room():
 def test_send_parcel_rejects_missing_gift():
     actor, _origin, _dest, sender, addressee, _box = _scenario()
     letter = _write(actor, sender, addressee)
-    result = SendParcelHandler().execute(
+    result = execute_handler(
+        SendParcelHandler(),
         _ctx(actor),
         _cmd(sender.id, "send-parcel", {"item_id": str(letter.id), "gift_id": "entity_9999"}),
     )
@@ -300,7 +320,8 @@ def test_send_parcel_rejects_gift_not_held():
     )
     origin.add_relationship(Contains(mode=ContainmentMode.ROOM_CONTENT), gift.id)  # on the floor
 
-    result = SendParcelHandler().execute(
+    result = execute_handler(
+        SendParcelHandler(),
         _ctx(actor),
         _cmd(sender.id, "send-parcel", {"item_id": str(letter.id), "gift_id": str(gift.id)}),
     )
