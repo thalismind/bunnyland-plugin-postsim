@@ -246,7 +246,7 @@ def test_scandal_edition_registers_one_open_incident():
     assert events[0].scandal is True
     incidents = _incidents(world, GAZETTE_INCIDENT_KIND)
     assert len(incidents) == 1
-    assert incidents[0].get_component(IncidentComponent).room_id == str(room.id)
+    assert container_of(incidents[0]) == room.id
 
     # A second scandal while the first is unresolved must not pile up another incident.
     _seed_history(world, "A scandal at the fair!", event_id="e2", epoch=1, tags=("scandal",))
@@ -261,7 +261,7 @@ def test_scandal_incident_without_room():
     GazetteConsequence().process(world, 0)
     incidents = _incidents(world, GAZETTE_INCIDENT_KIND)
     assert len(incidents) == 1
-    assert incidents[0].get_component(IncidentComponent).room_id is None
+    assert container_of(incidents[0]) is None
 
 
 # --------------------------------------------------------------------------------------

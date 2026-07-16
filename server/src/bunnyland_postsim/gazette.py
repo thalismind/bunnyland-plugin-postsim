@@ -241,7 +241,6 @@ class GazetteConsequence:
                     kind=GAZETTE_INCIDENT_KIND,
                     budget_spent=1.0,
                     started_at_epoch=epoch,
-                    room_id=str(room.id) if room is not None else None,
                 ),
             ],
         )
